@@ -2805,6 +2805,17 @@ func funcChanges(_ []Vector, matrixVal Matrix, args parser.Expressions, enh *Eva
 	if !found {
 		return enh.Out, nil
 	}
+	if len(histograms) == 0 {
+		previous := floats[firstFloat].F
+		for _, point := range floats[firstFloat+1:] {
+			current := point.F
+			if current != previous && !(math.IsNaN(current) && math.IsNaN(previous)) {
+				changes++
+			}
+			previous = current
+		}
+		return append(enh.Out, Sample{F: float64(changes)}), nil
+	}
 	for iFloat, iHistogram := firstFloat, firstHistogram; iFloat < len(floats) || iHistogram < len(histograms); {
 		switch {
 		// Process a float sample if no histogram sample remains or its timestamp is earlier.

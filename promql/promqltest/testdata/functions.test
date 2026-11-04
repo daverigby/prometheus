@@ -2740,3 +2740,18 @@ eval instant at 10m delta(counter[10m])
 # 4 * (300s / 240s) = 5.
 eval range from 5m to 10m step 1m delta(gauge[5m])
   {} 5 5 5 5 5 5
+
+# Float-only changes must handle repeated NaNs, missing points and windows
+# containing one sample without carrying state between series or steps.
+clear
+load 1m
+  changes_float{series="a"} 1 1 2 2 NaN NaN 3
+  changes_float{series="b"} 9 _ 9 8 _ 8 7
+  changes_float{series="c"} NaN NaN NaN NaN NaN NaN NaN
+  changes_float{series="d"} 0 _ _ 1 _ _ 2
+
+eval range from 2m to 6m step 1m changes(changes_float[3m])
+  {series="a"} 1 1 1 1 1
+  {series="b"} 0 1 1 0 1
+  {series="c"} 0 0 0 0 0
+  {series="d"} 0 0 0 0 0
