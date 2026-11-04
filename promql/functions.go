@@ -696,19 +696,29 @@ func extrapolatedRate(vals Matrix, args parser.Expressions, enh *EvalNodeHelper,
 		if enh.StartTimestamps != nil {
 			startTimestamps = enh.StartTimestamps.Floats
 		}
-		var overlapDetected bool
-		for i, currPoint := range samples.Floats[1:] {
-			prevPoint := samples.Floats[i]
-			// Warn once per series if start timestamp overlap detected.
-			if !overlapDetected && i+1 < len(startTimestamps) {
-				if checkStartTimeOverlap(startTimestamps[i], prevPoint.T, startTimestamps[i+1]) {
-					// Extract metric name only when needed.
-					annos.Add(annotations.NewStartTimeOverlapWarning(getMetricName(samples.Metric), args[0].PositionRange()))
-					overlapDetected = true
+		if len(startTimestamps) == 0 {
+			prev := samples.Floats[0].F
+			for _, currPoint := range samples.Floats[1:] {
+				if currPoint.F < prev {
+					resultFloat += prev
 				}
+				prev = currPoint.F
 			}
-			if currPoint.F < prevPoint.F || (i+1 < len(startTimestamps) && isStartTimestampReset(startTimestamps[i], prevPoint.T, startTimestamps[i+1], currPoint.T)) {
-				resultFloat += prevPoint.F
+		} else {
+			var overlapDetected bool
+			for i, currPoint := range samples.Floats[1:] {
+				prevPoint := samples.Floats[i]
+				// Warn once per series if start timestamp overlap detected.
+				if !overlapDetected && i+1 < len(startTimestamps) {
+					if checkStartTimeOverlap(startTimestamps[i], prevPoint.T, startTimestamps[i+1]) {
+						// Extract metric name only when needed.
+						annos.Add(annotations.NewStartTimeOverlapWarning(getMetricName(samples.Metric), args[0].PositionRange()))
+						overlapDetected = true
+					}
+				}
+				if currPoint.F < prevPoint.F || (i+1 < len(startTimestamps) && isStartTimestampReset(startTimestamps[i], prevPoint.T, startTimestamps[i+1], currPoint.T)) {
+					resultFloat += prevPoint.F
+				}
 			}
 		}
 	default:

@@ -35,6 +35,30 @@ import (
 	"github.com/prometheus/prometheus/util/teststorage"
 )
 
+func TestRateWithoutStartTimestamps(t *testing.T) {
+	engine := promqltest.NewTestEngineWithOpts(t, promql.EngineOpts{
+		MaxSamples:         10000,
+		Timeout:            10 * time.Second,
+		EnableAtModifier:   true,
+		UseStartTimestamps: false,
+		Parser:             parser.NewParser(promqltest.TestParserOpts),
+	})
+	promqltest.RunTest(t, `
+load 5m
+  counter_reset_total 0+27x4 0+27x5
+  counter_steady_total 0+80x10
+
+eval instant at 50m rate(counter_reset_total[50m])
+  {} 0.08
+
+eval instant at 50m rate(counter_steady_total[50m])
+  {} 0.26666666666666666
+
+eval instant at 50m increase(counter_reset_total[50m])
+  {} 240
+`, engine)
+}
+
 func TestDeriv(t *testing.T) {
 	// https://github.com/prometheus/prometheus/issues/2674#issuecomment-315439393
 	// This requires more precision than the usual test system offers,
